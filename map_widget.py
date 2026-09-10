@@ -4,7 +4,8 @@ from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QPainter, QColor, QPolygonF, QFont
 from PySide6.QtCore import QPointF, QRectF, QTimer, Qt
 
-from project.goal import Goal
+from goal import Goal
+from robot import robot as Robot
 
 GRID = 10
 
@@ -21,6 +22,7 @@ class MapWidget(QWidget):
         self._next_goal_id = 0  # To assign unique IDs to goals
         self.goals_found = 0  # Cumulative count of goals picked successfully
         self.iteration = 0  # Number of steps run
+        self.scenario_mode = False  # True when running a fixed test scenario
 
     def start_iteration(self):
         self.timer.start(500)  # Update every 500 ms
@@ -50,7 +52,7 @@ class MapWidget(QWidget):
         '''
         print("Step function called")
         self.iteration += 1
-        if not self.goals:  # Generate random goals if there are none
+        if not self.goals and not self.scenario_mode:  # Generate random goals if there are none
             positions = random.sample(
                 [(x, y) for x in range(GRID) for y in range(GRID)],
                 3
@@ -96,9 +98,6 @@ class MapWidget(QWidget):
                     if other_robot.position == [x, y]:
                         robot_id_same_position.append(other_robot.id)
 
-            for other_robot in self.robots:
-                if other_robot.id != robot.id and other_robot.position == robot.position:
-                    robot_id_same_position.append(other_robot.id)
             robot.sense(target_in_front, robot_id_in_front, robot_id_same_position)
 
     
@@ -107,6 +106,10 @@ class MapWidget(QWidget):
             # Decide which action to perform (random for now)
             if robot.mode == 'random':
                 random_action = random.choice(["forward", "turn_left", "turn_right", "pick_up"])
+            elif robot.mode == 'scripted':
+                if not robot.script:
+                    continue  # script exhausted: robot idles this step
+                random_action = robot.script.pop(0)
             elif robot.mode == 'userinput':
                 # Get user input for the action
                 random_action = input(f"Robot {robot.id} at {robot.position} facing {robot.orientation}. Enter action (forward, turn_left, turn_right, pick_up): ")
@@ -129,12 +132,12 @@ class MapWidget(QWidget):
                         goal.picking()
 
         # check for illegal behavior (one robot pick goal, more than two robot pick goal, more than one robot pick goal but there is no goal in that position)
-        for goal in self.goals:
+        for goal in list(self.goals):
             if goal.found == 2:
                 print(f"Goal {goal.id} picked successfully by two robots")
                 self.goals.remove(goal)  # Remove the goal from the list
                 self.goals_found += 1
-                robot_pick.remove((robot.id, robot.position) for robot in self.robots if robot.position == goal.position)
+                robot_pick = [rp for rp in robot_pick if rp[1] != goal.position]
             elif goal.found > 2:
                 print(f"Illegal behavior: more than two robots picked goal {goal.id}")
                 goal.found = 0
@@ -153,6 +156,27 @@ class MapWidget(QWidget):
             robot.send()  # Placeholder for sending messages
 
         self.update()  # Trigger a repaint to show the updated positions
+
+    def load_scenario(self, scenario):
+        """Reset the map to a fixed test scenario (see project/scenarios.py)."""
+        self.timer.stop()
+        self.robots.clear()
+        self.goals.clear()
+        self.messages.clear()
+        self._next_goal_id = 0
+        self.goals_found = 0
+        self.iteration = 0
+        self.scenario_mode = True
+
+        for goal_position in scenario["goals"]:
+            self.add_goal(Goal(id=self._next_goal_id, position=list(goal_position)))
+            self._next_goal_id += 1
+
+        for spec in scenario["robots"]:
+            rob = Robot(spec["id"], list(spec["pos"]), mode="scripted")
+            rob.orientation = spec["facing"]
+            rob.script = list(spec["script"])
+            self.add_robot(rob)
 
     def add_robot(self, robot):
         self.robots.append(robot)

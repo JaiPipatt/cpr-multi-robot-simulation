@@ -2,10 +2,11 @@ class robot:
     def __init__(self, id, position, mode="random"):
         self.id = id
         self.position = position
-        self.mode = mode  # "random" or "userinput"
+        self.mode = mode  # "random", "userinput" or "scripted"
         self.orientation = "N"  # Default orientation is North
         self.sensed_data = []  # List to hold sensed data
         self.messages = []  # List to hold messages for this robot
+        self.script = []  # Queue of actions consumed one per step in "scripted" mode
     def do(self, action):
         if action == "forward":
             if self.orientation == "N":

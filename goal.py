@@ -8,4 +8,4 @@ class Goal:
         self.found += 1
 
     def picked(self): # need two robots to pick the goal
-        return self.found >= 2
+        return self.found == 2

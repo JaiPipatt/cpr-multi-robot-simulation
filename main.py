@@ -11,9 +11,10 @@ from PySide6.QtWidgets import (
     QPushButton
 )
 
-from project.map_widget import MapWidget, GRID
-from project.robot import robot
-from project.goal import Goal
+from map_widget import MapWidget, GRID
+from robot import robot
+from goal import Goal
+from scenarios import SCENARIOS
 
 
 class MainWindow(QWidget):
@@ -109,6 +110,13 @@ def parse_args(argv):
         help="decision mode for robots: 'random' (default) or 'userinput' "
              "(prompt on the console for each robot's action every step)",
     )
+    parser.add_argument(
+        "--scenario",
+        choices=["random", *SCENARIOS.keys()],
+        default="random",
+        help="'random' (default) uses the GUI + random goals; a named scenario "
+             "loads fixed goals/robots with scripted actions and auto-starts",
+    )
     return parser.parse_args(argv)
 
 
@@ -119,5 +127,10 @@ app = QApplication([])
 window = MainWindow(robot_mode=args.mode)
 window.resize(1000, 600)
 window.show()
+
+if args.scenario != "random":
+    window.map.load_scenario(SCENARIOS[args.scenario])
+    window.map.start_iteration()
+    window.update_status()
 
 app.exec()
