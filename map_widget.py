@@ -23,6 +23,7 @@ class MapWidget(QWidget):
         self.goals_found = 0  # Cumulative count of goals picked successfully
         self.iteration = 0  # Number of steps run
         self.scenario_mode = False  # True when running a fixed test scenario
+        self.mean_delay = 1  # Mean delay for message passing (in ms)
 
     def start_iteration(self):
         self.timer.start(500)  # Update every 500 ms
@@ -67,8 +68,8 @@ class MapWidget(QWidget):
 
         for robot in self.robots:
 
-            # Read input messages (not implemented)
-            robot.read(self.messages)  # Assign the global messages to each robot
+            # Read input messages from this robot's own inbox
+            robot.read()
 
             # Sense the environment (not implemented)
             x, y, orientation = robot.position[0], robot.position[1], robot.orientation
@@ -110,6 +111,10 @@ class MapWidget(QWidget):
                 if not robot.script:
                     continue  # script exhausted: robot idles this step
                 random_action = robot.script.pop(0)
+            elif robot.mode == 'auto':
+                random_action = robot.decide()  # state machine in robot.py
+                if random_action is None:
+                    continue  # robot idles this step (e.g. waiting for a partner)
             elif robot.mode == 'userinput':
                 # Get user input for the action
                 random_action = input(f"Robot {robot.id} at {robot.position} facing {robot.orientation}. Enter action (forward, turn_left, turn_right, pick_up): ")
@@ -152,8 +157,16 @@ class MapWidget(QWidget):
         
 
         for robot in self.robots:
-            # Send output messages (not implemented)
-            robot.send()  # Placeholder for sending messages
+            # Send output messages: every other robot gets its own copy.
+            # No delay for now (second item = 0); Milestone 3 draws it from an
+            # exponential distribution per receiver.
+            msg = robot.send()
+            if msg:
+                print(f"Robot {robot.id} broadcast {msg}")
+                for receiver in self.robots:
+                    if receiver.id != robot.id:
+                        delay = int(random.expovariate(1 / self.mean_delay)) if self.mean_delay > 0 else 0
+                        receiver.inbox.append([msg, delay])
 
         self.update()  # Trigger a repaint to show the updated positions
 

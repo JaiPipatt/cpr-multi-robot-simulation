@@ -105,10 +105,11 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description="Multi Robot Simulation")
     parser.add_argument(
         "--mode",
-        choices=["random", "userinput"],
-        default="random",
-        help="decision mode for robots: 'random' (default) or 'userinput' "
-             "(prompt on the console for each robot's action every step)",
+        choices=["auto", "random", "userinput"],
+        default="auto",
+        help="decision mode for robots: 'auto' (default, robots cooperate by "
+             "messages), 'random' or 'userinput' (prompt on the console for "
+             "each robot's action every step)",
     )
     parser.add_argument(
         "--scenario",
