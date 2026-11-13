@@ -3,13 +3,13 @@
 Runs the project's own MapWidget.step() with Qt replaced by stand-ins and only
 *observes* the robots (wraps send(), scans robot.chosen). Usage:
 
-    python report/run_experiments.py compare   # M2 (git HEAD) vs M3 (current) over delay
-    python report/run_experiments.py scaling   # M3: decision latency / messages vs N
+    python experiments/run_experiments.py compare   # M2 (git HEAD) vs M3 (current) over delay
+    python experiments/run_experiments.py scaling   # M3: decision latency / messages vs N
 """
 import contextlib, csv, io, os, random, re, statistics, subprocess, sys, types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PROJECT = os.path.dirname(HERE)
+PROJECT = os.path.join(os.path.dirname(HERE), "src")
 CODE = {"M2": os.path.join(HERE, "m2_baseline"), "M3": PROJECT}
 
 

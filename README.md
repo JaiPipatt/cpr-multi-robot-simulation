@@ -1,6 +1,16 @@
 # Cyber Physical Robotics: Project
 
-*Project description dated July 31, 2026. Original: [Project-description.pdf](Project-description.pdf).*
+*Project description dated July 31, 2026. Original: [Project-description.pdf](docs/Project-description.pdf).*
+
+## Repository layout
+
+```
+src/          simulator and robot controller (run: python src/main.py)
+experiments/  Monte-Carlo runs and figures for the Milestone 3 report
+              (python experiments/run_experiments.py compare|scaling,
+               python experiments/make_figures.py)
+docs/         project description, milestone reports, slides, FSM diagram
+```
 
 ## 1. Overview
 
