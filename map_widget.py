@@ -6,6 +6,7 @@ from PySide6.QtCore import QPointF, QRectF, QTimer, Qt
 
 from goal import Goal
 from robot import robot as Robot
+from logger import log
 
 GRID = 10
 
@@ -23,10 +24,10 @@ class MapWidget(QWidget):
         self.goals_found = 0  # Cumulative count of goals picked successfully
         self.iteration = 0  # Number of steps run
         self.scenario_mode = False  # True when running a fixed test scenario
-        self.mean_delay = 1  # Mean delay for message passing (in ms)
+        self.mean_delay = 3  # Mean delay for message passing (in ms)
 
     def start_iteration(self):
-        self.timer.start(500)  # Update every 500 ms
+        self.timer.start(0)  # Update every 500 ms
 
     def stop_iteration(self):
         self.timer.stop()
@@ -51,12 +52,12 @@ class MapWidget(QWidget):
             for each robot:
                 send output messages
         '''
-        print("Step function called")
+        log("info", "Step function called")
         self.iteration += 1
         if not self.goals and not self.scenario_mode:  # Generate random goals if there are none
             positions = random.sample(
                 [(x, y) for x in range(GRID) for y in range(GRID)],
-                3
+                80 
             )
             for i, goal_position in enumerate(positions):
                 new_goal = Goal(
@@ -119,7 +120,7 @@ class MapWidget(QWidget):
                 # Get user input for the action
                 random_action = input(f"Robot {robot.id} at {robot.position} facing {robot.orientation}. Enter action (forward, turn_left, turn_right, pick_up): ")
                 while random_action not in ["forward", "turn_left", "turn_right", "pick_up"]:
-                    print("Invalid action. Please enter a valid action.")
+                    log("warn", "Invalid action. Please enter a valid action.")
                     random_action = input(f"Robot {robot.id} at {robot.position} facing {robot.orientation}. Enter action (forward, turn_left, turn_right, pick_up): ")
             else:
                 continue  # unknown mode: robot idles this step
@@ -139,22 +140,19 @@ class MapWidget(QWidget):
         # check for illegal behavior (one robot pick goal, more than two robot pick goal, more than one robot pick goal but there is no goal in that position)
         for goal in list(self.goals):
             if goal.found == 2:
-                print(f"Goal {goal.id} picked successfully by two robots")
+                log("success", f"Goal {goal.id} picked successfully by two robots")
                 self.goals.remove(goal)  # Remove the goal from the list
                 self.goals_found += 1
                 robot_pick = [rp for rp in robot_pick if rp[1] != goal.position]
             elif goal.found > 2:
-                print(f"Illegal behavior: more than two robots picked goal {goal.id}")
+                log("error", f"Illegal behavior: more than two robots picked goal {goal.id}")
                 goal.found = 0
             elif goal.found == 1:
-                print(f"Illegal behavior: only one robot picked goal {goal.id}")
+                log("error", f"Illegal behavior: only one robot picked goal {goal.id}")
                 goal.found = 0
         for robot_id, position in robot_pick:
             if not any(goal.position == position for goal in self.goals):
-                print(f"Illegal behavior: robot {robot_id} picked a goal at {position} but there is no goal there")
-
-
-        
+                log("error", f"Illegal behavior: robot {robot_id} picked a goal at {position} but there is no goal there")
 
         for robot in self.robots:
             # Send output messages: every other robot gets its own copy.
@@ -162,7 +160,7 @@ class MapWidget(QWidget):
             # exponential distribution per receiver.
             msg = robot.send()
             if msg:
-                print(f"Robot {robot.id} broadcast {msg}")
+                log("msg", f"Robot {robot.id} broadcast {msg}")
                 for receiver in self.robots:
                     if receiver.id != robot.id:
                         delay = int(random.expovariate(1 / self.mean_delay)) if self.mean_delay > 0 else 0
@@ -193,6 +191,8 @@ class MapWidget(QWidget):
 
     def add_robot(self, robot):
         self.robots.append(robot)
+        for r in self.robots:
+            r.N = len(self.robots)
         self.update()  # Trigger a repaint to show the new robot
 
     def add_goal(self, goal):
